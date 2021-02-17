@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="robots" content="noindex">
+
+        <title>Smart Forms</title>
+
+        <style>
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html {
+            font-size: 16px;
+            font-family: sans-serif;
+          }
+
+          body {
+            margin: 0;
+            color: #585865;
+            /* color: #17183a; */
+          }
+
+          p {
+            color: #252344;
+            font-size: inherit;
+            margin-bottom: 2rem;
+          }
+
+          .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+          }
+
+          .content {
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .message.error .heading {
+            color: #f55c5c;
+          }
+
+          .message.success .heading {
+            color: #4aab14;
+          }
+
+          .heading {
+            font-size: 18px;
+            margin: 10px 0;
+          }
+
+          .text {
+            color: inherit;
+            font-size: 16px;
+            font-weight: normal;
+            line-height: 1.5;
+            max-width: 320px;
+            margin: 0 auto;
+          }
+
+          .text-center {
+            text-align: center;
+          }
+
+          .btn {
+            cursor: pointer;
+          }
+
+          .btn:hover {
+            opacity: .9;
+          }
+
+          .btn-primary {
+            font-size: inherit;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            min-width: 100px;
+            padding: .5rem .75rem;
+          }
+
+          .icon {
+            font-size: 92px;
+            display: block;
+            background-color: #f5f9fd;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+          }
+
+          .envelope {
+            width: 80px;
+          }
+
+          .large .heading {
+            font-size: 22px;
+          }
+
+          .large .icon {
+            padding: 35px;
+          }
+
+          .large .content {
+            min-height: 210px;
+          }
+
+          #recaptcha {
+            margin: 20px auto 0;
+            width: fit-content;
+          }
+
+          #close-btn {
+            display: block;
+            margin: 0 auto 20px;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 15px 50px;
+            letter-spacing: 0.3px;
+            box-shadow: 0px 3px 3px rgba(130, 130, 130, 0.2);
+            outline: none !important;
+          }
+
+          .f-modal-icon {
+            border-radius: 50%;
+            border: 4px solid gray;
+            box-sizing: content-box;
+            width: 20px;
+            height: 20px;
+            margin: 10px auto;
+            padding: 0;
+            position: relative;
+          }
+
+          .f-modal-loading {
+            border-color: transparent;
+            border-left-color: #007bff;
+            animation: rotate 1.15s infinite linear;
+          }
+
+          .f-modal-loading:before {
+            content: "";
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 4px solid rgba(0, 123, 255, 0.2);
+            box-sizing: content-box;
+            z-index: 2;
+          }
+
+          .f-modal-success {
+            border-color: rgba(187, 228, 164, 0.42);
+          }
+
+          .f-modal-success:before,
+          .f-modal-success:after {
+            content: "";
+            position: absolute;
+            left: 7px;
+            bottom: 5px;
+            width: 4px;
+            height: 8px;
+            background: #a5dc86;
+            transform-origin: bottom center;
+          }
+
+          .f-modal-success:before {
+            transform: rotate(-45deg);
+          }
+
+          .f-modal-success:after {
+            left: 5px;
+            height: 13px;
+            transform: rotate(45deg);
+          }
+
+          .f-modal-error {
+            border-color: rgba(232, 54, 54, 0.12);
+          }
+
+          .f-modal-error:before,
+          .f-modal-error:after {
+            content: "";
+            position: absolute;
+            top: 4px;
+            left: 8px;
+            width: 4px;
+            height: 12px;
+            background: #e83636;
+          }
+
+          .f-modal-error:before {
+            transform: rotate(-45deg);
+          }
+
+          .f-modal-error:after {
+            transform: rotate(45deg);
+          }
+
+          @keyframes  rotate {
+            0% {
+              transform: rotate(0);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+
+          .g-recaptcha-bubble-arrow + div:not([class]) {
+            transform:translate3d(0,0,0)!important;
+          }
+
+        </style>
+    </head>
+    <body>
+
+        <div class="container large">
+
+          <span class="icon text-center">
+            <img class="envelope" src="https://bootstrapstudio.io/assets/img/envelope.svg">
+          </span>
+
+          <div class="content"></div>
+
+          <button type="button" class="btn btn-primary" id="close-btn">Schließen</button>
+
+        </div>
+
+        <script>
+
+            var submitEmailOperation = 'submitEmail';
+            var closeIframeOperation = 'closeIframe';
+            var showMessageOperation = 'showMessage';
+            var showRecaptchaOperation = 'showRecaptcha';
+            var closeButton = document.getElementById('close-btn');
+            var recaptchaLoaded = false;
+            var recaptchaID = 'recaptcha';
+
+            closeButton.addEventListener('click', closeIframe);
+
+            window.addEventListener('message', analyzeMessage, false);  //when status needs to be displayed about request sending
+
+            function analyzeMessage(event) {
+
+              if (!event.data || !event.data.operation) return;
+
+              if (event.data.operation === showMessageOperation) {
+                showMessage(event.data.title, event.data.message, event.data.status || 'loading');
+              } else {
+                showRecaptcha();
+              }
+            }
+
+            function getContentElement() {
+              return document.querySelector('.content');
+            }
+
+            function clearContent() {
+              var node = getContentElement();
+
+              if (!node) return;
+
+              while (node.firstChild) {
+                node.removeChild(node.firstChild);
+              }
+            }
+
+            function showRecaptcha() {
+
+              clearContent();
+
+              var node = getContentElement();
+
+              if (!node) return;
+
+              node.appendChild(buildRecaptcha());
+
+              if (recaptchaLoaded) {
+                renderRecaptcha();
+              }
+            }
+
+            function onRecaptchaLoadCallback() {
+              recaptchaLoaded = true;
+              renderRecaptcha();
+            }
+
+            function renderRecaptcha() {
+
+              if (document.getElementById(recaptchaID)) {
+                grecaptcha.render(recaptchaID, {
+                  'sitekey' : "6Le4i24UAAAAAMi3lM45YfBa21AJhcMQo40MCI6I",
+                  'callback': validRecaptcha
+                });
+              }
+
+            }
+
+            function showMessage(title, message, status) {
+
+              clearContent();
+
+              var node = getContentElement();
+
+              if (!node) return;
+
+              node.appendChild(buildMessage(title, message, status));
+            }
+
+            function buildMessage(title, message, status) {
+
+              var fragment = document.createDocumentFragment();
+              var icon = buildStatusIcon(status);
+
+              if (icon) {
+                fragment.appendChild(icon);
+              }
+
+              var messageContainer = document.createElement('div');
+              messageContainer.classList.add('message', status, 'text-center');
+
+              if (status !== 'loading') {
+                var heading = document.createElement('h3');
+                heading.classList.add('heading');
+                messageContainer.appendChild(heading);
+              }
+
+              if (status === 'error') {
+                heading.innerText = title || 'Oops...';
+              } else if (status === 'success') {
+                heading.innerText = title || 'Success';
+              }
+
+              var text = document.createElement('p');
+              text.classList.add('text', 'text-center');
+              text.innerText = message;
+
+              messageContainer.appendChild(text);
+              fragment.appendChild(messageContainer);
+
+              return fragment;
+            }
+
+            function buildStatusIcon(status) {
+              if (status === 'loading') {
+                var wrapper = document.createElement('div');
+                wrapper.classList.add('f-modal-icon', 'f-modal-' + status, 'animate');
+
+                return wrapper;
+              }
+            }
+
+            function buildRecaptcha() {
+
+              var fragment = document.createDocumentFragment();
+
+              var recaptcha = document.createElement('div');
+              recaptcha.id = recaptchaID;
+
+              fragment.appendChild(recaptcha);
+
+              return fragment;
+            }
+
+            function validRecaptcha(token) {
+              window.parent.postMessage({ 'recaptchaToken': token, 'operation': submitEmailOperation }, '*'); // inform parent window that recaptcha is sent
+            }
+
+            function closeIframe() {
+              window.parent.postMessage({ 'operation': closeIframeOperation }, '*'); //close iframe in parent window
+            }
+
+        </script>
+        <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoadCallback&render=explicit" async defer></script>
+    </body>
+</html>
